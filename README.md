@@ -2,24 +2,21 @@
 
 <div align="center">
 
-TUI extensions for [pi](https://pi.dev/), the minimal AI coding agent. Extensions are independently installable, theme-aware, and built around a single concern.
+Custom prompt editor pane for [pi](https://pi.dev/), the minimal AI coding agent.
+Framed input with a π prefix, corrected autocomplete alignment, and a double-press quit guard.
 
 </div>
-
-## Extensions
-
-- [`prompt-pane`](./prompt-pane) — Framed input editor with a π prefix, corrected autocomplete alignment, and a double-press quit guard
 
 ## Install Extension
 
 ```bash
-pi install git:github.com/visua1hue/pi-pane/prompt-pane
+pi install git:github.com/visua1hue/pi-pane
 ```
 
-Try without install:
+Try without installing:
 
 ```bash
-pi -e git:github.com/visua1hue/pi-pane/prompt-pane
+pi -e git:github.com/visua1hue/pi-pane
 ```
 
 ## Development

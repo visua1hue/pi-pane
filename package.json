@@ -1,7 +1,7 @@
 {
-  "name": "@visua1hue/pi-pane-prompt-pane",
+  "name": "@visua1hue/pi-pane",
   "version": "0.1.0",
-  "description": "Framed input editor for the pi coding agent",
+  "description": "Custom prompt editor pane for pi",
   "keywords": ["pi-package"],
   "license": "MIT",
   "pi": {
