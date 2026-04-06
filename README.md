@@ -1,32 +1,37 @@
-# pi-pane
+![pi-pane preview](.github/assets/preview.png)
 
-UI extensions for [pi](pi.dev), the minimal AI coding agent. Each extension is independently installable and focused on a single concern.
+<div align="center">
+
+TUI extensions for [pi](https://pi.dev/), the minimal AI coding agent. Extensions are independently installable, theme-aware, and built around a single concern.
+
+</div>
 
 ## Extensions
 
-| Extension                      | What it does                                                                                             |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| [`prompt-pane`](./prompt-pane) | Box-framed input editor with a π prefix, corrected autocomplete alignment, and a double-press quit guard |
+- [`prompt-pane`](./prompt-pane) — Framed input editor with a π prefix, corrected autocomplete alignment, and a double-press quit guard
 
-## Install an extension
+## Install Extension
 
 ```bash
-pi install git:github.com/yourname/pi-pane#prompt-pane
+pi install git:github.com/visua1hue/pi-pane/prompt-pane
 ```
 
-Try without installing:
+Try without install:
 
 ```bash
-pi -e git:github.com/yourname/pi-pane#prompt-pane
+pi -e git:github.com/visua1hue/pi-pane/prompt-pane
 ```
 
-## Design principles
+## Development
 
-- **One extension, one concern** — no cross-cutting behavior between extensions
-- **Theme-aware** — colors follow your pi theme tokens, not hardcoded hex values
-- **No dependencies** — install straight from git, no npm required
-- **Zero side effects** — no background timers, no global state, no render loops
+Link the extension into pi's extensions directory, then edit and relaunch to iterate:
+
+```bash
+ln -s /path/to/pi-pane/prompt-pane ~/.pi/agent/extensions/pi-frame
+```
+
+TypeScript is transpiled on the fly — no build step required.
 
 ## Requirements
 
-- [Pi Agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
+- [pi agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
