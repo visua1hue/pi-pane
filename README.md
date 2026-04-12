@@ -9,26 +9,28 @@ Framed input with a π prefix, corrected autocomplete alignment, and a double-pr
 
 ## Install Extension
 
-**Note:** `pi install` is not yet fully supported. Until this extension is published on npm, use one of the methods below. This extension is in early development. APIs and behavior may change.
-
-**Permanent install (recommended):**
+Install as a pi package:
 
 ```bash
-git clone https://github.com/visua1hue/pi-pane ~/.pi/agent/extensions/pi-pane
+pi install git:github.com/visua1hue/pi-pane
 ```
 
-**Try without installing:**
+Try without installing:
 
 ```bash
 pi -e git:github.com/visua1hue/pi-pane
 ```
 
-## Development
+## Local Development
 
-Link the extension into pi's extensions directory, then edit and relaunch to iterate:
+Add to `~/.pi/agent/settings.json`:
 
-```bash
-ln -s /path/to/pi-pane/prompt-pane ~/.pi/agent/extensions/pi-frame
+```json
+{
+  "extensions": [
+    "/path/to/pi-pane/src/index.ts"
+  ]
+}
 ```
 
 TypeScript is transpiled on the fly — no build step required.
@@ -36,3 +38,7 @@ TypeScript is transpiled on the fly — no build step required.
 ## Requirements
 
 - [pi agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
+
+## License
+
+MIT

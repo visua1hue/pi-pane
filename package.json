@@ -1,10 +1,35 @@
 {
   "name": "@visua1hue/pi-pane",
   "version": "0.1.0",
-  "description": "Custom prompt editor pane for pi",
-  "keywords": ["pi-package"],
+  "description": "pi's TUI, but polished — framed input with a π prefix, autocomplete alignment fix, and double-press quit guard.",
+  "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/visua1hue/pi-pane.git"
+  },
+  "homepage": "https://github.com/visua1hue/pi-pane#readme",
+  "bugs": {
+    "url": "https://github.com/visua1hue/pi-pane/issues"
+  },
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "pi-package",
+    "tui",
+    "editor",
+    "ai-agent"
+  ],
   "pi": {
-    "extensions": ["./index.ts"]
+    "extensions": ["./src/index.ts"]
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@types/node": "^24.5.2",
+    "typescript": "^6.0.2"
   }
 }
