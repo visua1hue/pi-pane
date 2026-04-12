@@ -13,6 +13,9 @@ import {
 import {
   RESET,
   BOLD,
+  BG_PANEL,
+  FG_PANEL,
+  PAD_X,
   PI_STR,
   PI_WIDTH,
   PI_SYMBOL_COL,
@@ -121,8 +124,9 @@ export class PiPaneEditor extends CustomEditor {
 
   override render(width: number): string[] {
     try {
-      const inner = width - 2;
-      const superLines = super.render(width);
+      const cw = width - PAD_X * 2; // content width inside padding
+      const inner = cw - 2;
+      const superLines = super.render(cw);
 
       let bottomIdx = superLines.length - 1;
       for (let i = superLines.length - 1; i >= 1; i--) {
@@ -136,7 +140,7 @@ export class PiPaneEditor extends CustomEditor {
           " ".repeat(PI_SYMBOL_COL) +
           truncateToWidth(
             line.replace("→", AUTOCOMPLETE_CURSOR),
-            width - PI_SYMBOL_COL,
+            cw - PI_SYMBOL_COL,
             "",
             true,
           ),
@@ -154,7 +158,7 @@ export class PiPaneEditor extends CustomEditor {
         if (i !== 0)
           return (
             " ".repeat(PI_WIDTH) +
-            truncateToWidth(line, width - PI_WIDTH, "", true)
+            truncateToWidth(line, cw - PI_WIDTH, "", true)
           );
 
         if (this.hintMessage) {
@@ -164,18 +168,31 @@ export class PiPaneEditor extends CustomEditor {
             piPrefix +
             truncateToWidth(
               line,
-              width - PI_WIDTH - visibleWidth(hint),
+              cw - PI_WIDTH - visibleWidth(hint),
               "",
               true,
             ) +
             hint
           );
         }
-        return piPrefix + truncateToWidth(line, width - PI_WIDTH, "", true);
+        return piPrefix + truncateToWidth(line, cw - PI_WIDTH, "", true);
       });
 
-      const spacer = autoLines.length > 0 ? [" ".repeat(width)] : [];
-      return [topLine, ...midLines, ...spacer, ...autoLines, botLine];
+      const spacer = autoLines.length > 0 ? [" ".repeat(cw)] : [];
+      const raw = [topLine, ...midLines, ...spacer, ...autoLines, botLine];
+
+      // ── Wrap with panel background ──────────────────────────────────
+      const pad = " ".repeat(PAD_X);
+      const wrap = (line: string): string => {
+        const patched = line.replaceAll(RESET, RESET + BG_PANEL);
+        return BG_PANEL + pad + patched + pad + RESET;
+      };
+
+      // Thin edge rows: ▁ top (1/8 bottom), ▔ bottom (1/8 top)
+      const topEdge = FG_PANEL + "▁".repeat(width) + RESET;
+      const botEdge = FG_PANEL + "▔".repeat(width) + RESET;
+
+      return [topEdge, ...raw.map(wrap), botEdge];
     } catch (e) {
       console.error("PiPaneEditor render error:", e);
       throw e;
