@@ -7,7 +7,7 @@ export const BOLD = "\x1b[1m";
 
 // ── Editor chrome ────────────────────────────────────────────────────────────
 
-export const PI_STR = "  π ";
+export const PI_STR = "  pi ";
 export const PI_WIDTH = PI_STR.length; // prefix column budget: 4
 export const PI_SYMBOL_COL = PI_STR.indexOf("π"); // autocomplete indent: 2
 

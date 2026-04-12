@@ -15,6 +15,7 @@ import {
   BOLD,
   BG_PANEL,
   FG_PANEL,
+  FG_ACCENT,
   PAD_X,
   PI_STR,
   PI_WIDTH,
@@ -126,7 +127,9 @@ export class PiPaneEditor extends CustomEditor {
     try {
       const cw = width - PAD_X * 2; // content width inside padding
       const inner = cw - 2;
-      const superLines = super.render(cw);
+      // Render parent narrower: PI_WIDTH left + 1 col right margin
+      const rightPad = 1;
+      const superLines = super.render(cw - PI_WIDTH - rightPad);
 
       let bottomIdx = superLines.length - 1;
       for (let i = superLines.length - 1; i >= 1; i--) {
@@ -146,13 +149,13 @@ export class PiPaneEditor extends CustomEditor {
           ),
       );
 
-      const border = (ch: string) => this.fg("borderMuted", ch);
+      const border = (ch: string) => FG_ACCENT + ch + RESET;
       const topLine =
         border("┌") + border("─".repeat(inner)) + border("┐") + RESET;
       const botLine =
         border("└") + border("─".repeat(inner)) + border("┘") + RESET;
 
-      const piPrefix = BOLD + this.fg("borderMuted", PI_STR) + RESET;
+      const piPrefix = BOLD + FG_ACCENT + PI_STR + RESET;
 
       const midLines = contentLines.map((line, i) => {
         if (i !== 0)
