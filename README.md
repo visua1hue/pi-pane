@@ -7,6 +7,13 @@ Framed input with a `pi` prefix, panel background, user message styling with res
 
 </div>
 
+## Features
+
+- **Framed editor** — bordered input with `pi` prefix and dark panel bg
+- **Response time** — per-message timing on user messages
+- **Quit guard** — double-press to exit, single press clears input
+- **Autocomplete alignment** — indented to match editor prefix
+
 ## Install Extension
 
 Install as a pi package:
