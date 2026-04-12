@@ -20,6 +20,11 @@ export const BG_PANEL = "\x1b[48;2;16;16;16m"; // neutral near-black
 export const FG_PANEL = "\x1b[38;2;16;16;16m"; // matching foreground for edge blocks
 export const PAD_X = 1; // 1 col padding each side
 
+// ── User message accent ─────────────────────────────────────────────────────
+
+export const FG_ACCENT = "\x1b[38;2;74;74;74m"; // #4a4a4a structural gray (matches statusline)
+export const CORNER_LEN = 2; // horizontal dash length before ┐
+
 // ── Theme interface ──────────────────────────────────────────────────────────
 
 // EditorTheme doesn't expose fg() publicly — this local extension grants access

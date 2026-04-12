@@ -1,12 +1,28 @@
 import type { ExtensionAPI, KeybindingsManager } from "@mariozechner/pi-coding-agent";
 import type { TUI, EditorTheme } from "@mariozechner/pi-tui";
 import { PiPaneEditor } from "./editor.js";
+import { patchUserMessage } from "./message.js";
 
 // Symbol.for() returns the same symbol across module reloads, so
 // the stashed original survives even when pi re-evaluates this file.
 const REAL_SET_EDITOR = Symbol.for("pi-pane:realSetEditor");
 
 export default function piPaneExtension(pi: ExtensionAPI) {
+  // Response time tracking: turnIndex → elapsed ms
+  const responseTimes: number[] = [];
+  let turnStartMs = 0;
+
+  pi.on("turn_start", () => {
+    turnStartMs = Date.now();
+    responseTimes.push(0);
+  });
+
+  pi.on("turn_end", () => {
+    if (responseTimes.length > 0) {
+      responseTimes[responseTimes.length - 1] = Date.now() - turnStartMs;
+    }
+  });
+
   pi.on("session_start", (_event, ctx) => {
     if (!ctx.hasUI) return;
 
@@ -17,6 +33,7 @@ export default function piPaneExtension(pi: ExtensionAPI) {
     ui[REAL_SET_EDITOR] = realSetEditor;
 
     ctx.ui.setWorkingMessage("\u200b");
+    patchUserMessage(ctx.ui.theme, responseTimes);
     realSetEditor(
       (tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) =>
         new PiPaneEditor(tui, theme, keybindings, {
