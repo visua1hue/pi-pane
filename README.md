@@ -3,7 +3,7 @@
 <div align="center">
 
 Custom prompt editor pane for [pi](https://pi.dev/), the minimal AI coding agent.
-Framed input with a π prefix, corrected autocomplete alignment, and a double-press quit guard.
+Framed input with a `pi` prefix, panel background, user message styling with response time, and a double-press quit guard.
 
 </div>
 

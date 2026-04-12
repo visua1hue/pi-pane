@@ -9,7 +9,7 @@ export const BOLD = "\x1b[1m";
 
 export const PI_STR = "  pi ";
 export const PI_WIDTH = PI_STR.length; // prefix column budget: 4
-export const PI_SYMBOL_COL = PI_STR.indexOf("π"); // autocomplete indent: 2
+export const PI_SYMBOL_COL = 2; // autocomplete indent
 
 export const AUTOCOMPLETE_CURSOR = "›"; // replaces pi-tui's hardcoded "→"
 export const HINT_MARGIN_RIGHT = 3; // cols between hint text and right edge
@@ -23,7 +23,6 @@ export const PAD_X = 1; // 1 col padding each side
 // ── User message accent ─────────────────────────────────────────────────────
 
 export const FG_ACCENT = "\x1b[38;2;74;74;74m"; // #4a4a4a structural gray (matches statusline)
-export const CORNER_LEN = 2; // horizontal dash length before ┐
 
 // ── Theme interface ──────────────────────────────────────────────────────────
 

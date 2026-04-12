@@ -12,7 +12,6 @@ import {
 
 import {
   RESET,
-  BOLD,
   BG_PANEL,
   FG_PANEL,
   FG_ACCENT,
@@ -155,7 +154,7 @@ export class PiPaneEditor extends CustomEditor {
       const botLine =
         border("└") + border("─".repeat(inner)) + border("┘") + RESET;
 
-      const piPrefix = BOLD + FG_ACCENT + PI_STR + RESET;
+      const piPrefix = FG_ACCENT + PI_STR + RESET;
 
       const midLines = contentLines.map((line, i) => {
         if (i !== 0)

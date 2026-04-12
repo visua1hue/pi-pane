@@ -3,12 +3,10 @@ import type { TUI, EditorTheme } from "@mariozechner/pi-tui";
 import { PiPaneEditor } from "./editor.js";
 import { patchUserMessage } from "./message.js";
 
-// Symbol.for() returns the same symbol across module reloads, so
-// the stashed original survives even when pi re-evaluates this file.
+// Survives module reloads — Symbol.for() returns the same ref
 const REAL_SET_EDITOR = Symbol.for("pi-pane:realSetEditor");
 
 export default function piPaneExtension(pi: ExtensionAPI) {
-  // Response time tracking: turnIndex → elapsed ms
   const responseTimes: number[] = [];
   let turnStartMs = 0;
 
@@ -26,7 +24,6 @@ export default function piPaneExtension(pi: ExtensionAPI) {
   pi.on("session_start", (_event, ctx) => {
     if (!ctx.hasUI) return;
 
-    // Retrieve the original, or stash it on first run
     const ui = ctx.ui as any;
     const realSetEditor: (factory: any) => void =
       ui[REAL_SET_EDITOR] ?? ctx.ui.setEditorComponent;
@@ -42,8 +39,7 @@ export default function piPaneExtension(pi: ExtensionAPI) {
         }),
     );
 
-    // Proxy: swallow any subsequent setEditorComponent calls from other
-    // extensions so the frame is never replaced or broken by undefined.
+    // Prevent other extensions from replacing the editor
     ctx.ui.setEditorComponent = () => {};
   });
 }

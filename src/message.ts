@@ -1,11 +1,14 @@
 import { BG_PANEL, RESET, FG_ACCENT } from "./visual.js";
 
+// ── Constants ──────────────────────────────────────────────────────
+
 const PATCHED = Symbol.for("pi-pane:userMsgPatched");
 const OSC133_B = "\x1b]133;B\x07";
 const MSG_PADDING_X = 3;
-const TIME_COL = 9; // fixed width for response time column
+const TIME_COL = 9;
 
-// Track instance creation order → maps to turn index
+// ── Instance tracking ──────────────────────────────────────────────
+
 const instanceIndex = new WeakMap<object, number>();
 let instanceCount = 0;
 
@@ -17,11 +20,9 @@ function formatTime(ms: number): string {
   return `${m}m ${s}s`;
 }
 
-/**
- * Override user-message background to match the editor panel,
- * widen horizontal padding, and show response time as a
- * right-aligned column on the first content line.
- */
+// ── Patch ──────────────────────────────────────────────────────────
+
+// Override user-message bg, widen padding, show response time
 export function patchUserMessage(
   themeInstance: any,
   responseTimes: number[],
@@ -33,7 +34,6 @@ export function patchUserMessage(
       if (UserMessageComponent[PATCHED]) return;
       UserMessageComponent[PATCHED] = true;
 
-      // Widen Markdown padding + tag instance with turn index
       const origAddChild = UserMessageComponent.prototype.addChild;
       UserMessageComponent.prototype.addChild = function (child: any) {
         if (child.paddingX !== undefined && !child._piPanePatched) {
