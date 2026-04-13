@@ -1,7 +1,11 @@
-import type { ExtensionAPI, KeybindingsManager } from "@mariozechner/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  KeybindingsManager,
+} from "@mariozechner/pi-coding-agent";
 import type { TUI, EditorTheme } from "@mariozechner/pi-tui";
 import { PiPaneEditor } from "./editor.js";
 import { patchUserMessage } from "./message.js";
+import type { PaneThemeLike } from "./visual.js";
 
 // Survives module reloads — Symbol.for() returns the same ref
 const REAL_SET_EDITOR = Symbol.for("pi-pane:realSetEditor");
@@ -25,15 +29,18 @@ export default function piPaneExtension(pi: ExtensionAPI) {
     if (!ctx.hasUI) return;
 
     const ui = ctx.ui as any;
+    const getTheme = (): PaneThemeLike | undefined =>
+      ctx.ui.theme as unknown as PaneThemeLike;
     const realSetEditor: (factory: any) => void =
       ui[REAL_SET_EDITOR] ?? ctx.ui.setEditorComponent;
     ui[REAL_SET_EDITOR] = realSetEditor;
 
     ctx.ui.setWorkingMessage("\u200b");
-    patchUserMessage(ctx.ui.theme, responseTimes);
+    patchUserMessage(getTheme, responseTimes);
     realSetEditor(
       (tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) =>
         new PiPaneEditor(tui, theme, keybindings, {
+          getTheme,
           isIdle: () => ctx.isIdle(),
           shutdown: () => ctx.shutdown(),
         }),

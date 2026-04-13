@@ -12,24 +12,22 @@ import {
 
 import {
   RESET,
-  BG_PANEL,
-  FG_PANEL,
-  FG_ACCENT,
   PAD_X,
   PI_STR,
   PI_WIDTH,
   PI_SYMBOL_COL,
   AUTOCOMPLETE_CURSOR,
   HINT_MARGIN_RIGHT,
-  type ThemeWithFg,
+  resolvePanePalette,
+  type PaneThemeLike,
 } from "./visual.js";
 import { isParentBorder, formatKey } from "./utils.js";
 
 const DOUBLE_PRESS_WINDOW_MS = 500;
 
 export class PiPaneEditor extends CustomEditor {
-  private readonly piTheme: ThemeWithFg;
   private readonly piKeybindings: KeybindingsManager;
+  private readonly getTheme: () => PaneThemeLike | undefined;
   private readonly isIdle: () => boolean;
   private readonly shutdown: () => void;
   private hintTimer: ReturnType<typeof setTimeout> | undefined;
@@ -40,21 +38,21 @@ export class PiPaneEditor extends CustomEditor {
     tui: TUI,
     theme: EditorTheme,
     keybindings: KeybindingsManager,
-    { isIdle, shutdown }: { isIdle: () => boolean; shutdown: () => void },
+    {
+      getTheme,
+      isIdle,
+      shutdown,
+    }: {
+      getTheme: () => PaneThemeLike | undefined;
+      isIdle: () => boolean;
+      shutdown: () => void;
+    },
   ) {
     super(tui, theme, keybindings);
-    this.piTheme = theme as ThemeWithFg;
     this.piKeybindings = keybindings;
+    this.getTheme = getTheme;
     this.isIdle = isIdle;
     this.shutdown = shutdown;
-  }
-
-  private fg(key: string, text: string): string {
-    try {
-      return this.piTheme.fg(key, text);
-    } catch {
-      return text;
-    }
   }
 
   // ── Quit hint ─────────────────────────────────────────────────────
@@ -124,9 +122,9 @@ export class PiPaneEditor extends CustomEditor {
 
   override render(width: number): string[] {
     try {
-      const cw = width - PAD_X * 2; // content width inside padding
+      const palette = resolvePanePalette(this.getTheme());
+      const cw = width - PAD_X * 2;
       const inner = cw - 2;
-      // Render parent narrower: PI_WIDTH left + 1 col right margin
       const rightPad = 1;
       const superLines = super.render(cw - PI_WIDTH - rightPad);
 
@@ -148,24 +146,25 @@ export class PiPaneEditor extends CustomEditor {
           ),
       );
 
-      const border = (ch: string) => FG_ACCENT + ch + RESET;
+      const border = (ch: string) => palette.frame(ch);
       const topLine =
-        border("┌") + border("─".repeat(inner)) + border("┐") + RESET;
+        border("┌") + border("─".repeat(inner)) + border("┐");
       const botLine =
-        border("└") + border("─".repeat(inner)) + border("┘") + RESET;
+        border("└") + border("─".repeat(inner)) + border("┘");
 
-      const piPrefix = FG_ACCENT + PI_STR + RESET;
+      const piPrefix = palette.prefix(PI_STR);
 
       const midLines = contentLines.map((line, i) => {
-        if (i !== 0)
+        if (i !== 0) {
           return (
             " ".repeat(PI_WIDTH) +
             truncateToWidth(line, cw - PI_WIDTH, "", true)
           );
+        }
 
         if (this.hintMessage) {
           const hint =
-            this.fg("dim", this.hintMessage) + " ".repeat(HINT_MARGIN_RIGHT);
+            palette.hint(this.hintMessage) + " ".repeat(HINT_MARGIN_RIGHT);
           return (
             piPrefix +
             truncateToWidth(
@@ -183,16 +182,14 @@ export class PiPaneEditor extends CustomEditor {
       const spacer = autoLines.length > 0 ? [" ".repeat(cw)] : [];
       const raw = [topLine, ...midLines, ...spacer, ...autoLines, botLine];
 
-      // ── Wrap with panel background ──────────────────────────────────
       const pad = " ".repeat(PAD_X);
       const wrap = (line: string): string => {
-        const patched = line.replaceAll(RESET, RESET + BG_PANEL);
-        return BG_PANEL + pad + patched + pad + RESET;
+        const patched = line.replaceAll(RESET, RESET + palette.panelBgAnsi);
+        return palette.panelBgAnsi + pad + patched + pad + RESET;
       };
 
-      // Thin edge rows: ▁ top (1/8 bottom), ▔ bottom (1/8 top)
-      const topEdge = FG_PANEL + "▁".repeat(width) + RESET;
-      const botEdge = FG_PANEL + "▔".repeat(width) + RESET;
+      const topEdge = palette.panelEdgeAnsi + "▁".repeat(width) + RESET;
+      const botEdge = palette.panelEdgeAnsi + "▔".repeat(width) + RESET;
 
       return [topEdge, ...raw.map(wrap), botEdge];
     } catch (e) {
