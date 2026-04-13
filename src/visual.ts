@@ -1,33 +1,83 @@
-import type { EditorTheme } from "@mariozechner/pi-tui";
+import type { Theme, ThemeColor } from "@mariozechner/pi-coding-agent";
 
 // ── ANSI constants ───────────────────────────────────────────────────────────
 
 export const RESET = "\x1b[0m";
-export const BOLD = "\x1b[1m";
 
 // ── Editor chrome ────────────────────────────────────────────────────────────
 
 export const PI_STR = "  pi ";
-export const PI_WIDTH = PI_STR.length; // prefix column budget: 4
-export const PI_SYMBOL_COL = 2; // autocomplete indent
+export const PI_WIDTH = PI_STR.length;
+export const PI_SYMBOL_COL = 2;
 
-export const AUTOCOMPLETE_CURSOR = "›"; // replaces pi-tui's hardcoded "→"
-export const HINT_MARGIN_RIGHT = 3; // cols between hint text and right edge
+export const AUTOCOMPLETE_CURSOR = "›";
+export const HINT_MARGIN_RIGHT = 3;
+export const PAD_X = 1;
 
-// ── Panel background ────────────────────────────────────────────────────────
+// ── Fallback ANSI codes (neutral near-black) ─────────────────────────────────
 
-export const BG_PANEL = "\x1b[48;2;16;16;16m"; // neutral near-black
-export const FG_PANEL = "\x1b[38;2;16;16;16m"; // matching foreground for edge blocks
-export const PAD_X = 1; // 1 col padding each side
+const FALLBACK_PANEL_BG = "\x1b[48;2;16;16;16m";
+const FALLBACK_PANEL_EDGE = "\x1b[38;2;16;16;16m";
+const FALLBACK_FG = "\x1b[38;2;74;74;74m"; // #4a4a4a structural gray
 
-// ── User message accent ─────────────────────────────────────────────────────
+// ── Palette ──────────────────────────────────────────────────────────────────
 
-export const FG_ACCENT = "\x1b[38;2;74;74;74m"; // #4a4a4a structural gray (matches statusline)
+export type ThemeBg = "selectedBg" | "userMessageBg" | "customMessageBg" | "toolPendingBg" | "toolSuccessBg" | "toolErrorBg";
 
-// ── Theme interface ──────────────────────────────────────────────────────────
+export interface PanePalette {
+  panelBg: string;
+  panelEdge: string;
+  frame(text: string): string;
+  prefix(text: string): string;
+  time(text: string): string;
+  hint(text: string): string;
+}
 
-// EditorTheme doesn't expose fg() publicly — this local extension grants access
-// to the theme's named color resolver without importing internal pi types.
-export interface ThemeWithFg extends EditorTheme {
-  fg(colorKey: string, text: string): string;
+function tryGetBgAnsi(theme: Theme, key: ThemeBg): string | undefined {
+  try {
+    return (theme as any).getBgAnsi(key);
+  } catch {
+    return undefined;
+  }
+}
+
+function tryFg(theme: Theme, key: ThemeColor, text: string): string | undefined {
+  try {
+    return theme.fg(key, text);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Convert a 48;2 or 48;5 bg ANSI code to its fg equivalent (38;…). */
+function bgToFgAnsi(bg: string): string {
+  if (bg.startsWith("\x1b[48;2;") || bg.startsWith("\x1b[48;5;")) {
+    return bg.replace("\x1b[48;", "\x1b[38;");
+  }
+  return FALLBACK_PANEL_EDGE;
+}
+
+function fgWrap(ansi: string, text: string): string {
+  return `${ansi}${text}${RESET}`;
+}
+
+export function resolvePalette(theme: Theme): PanePalette {
+  const panelBg =
+    tryGetBgAnsi(theme, "userMessageBg") ??
+    tryGetBgAnsi(theme, "customMessageBg") ??
+    FALLBACK_PANEL_BG;
+
+  return {
+    panelBg,
+    panelEdge: bgToFgAnsi(panelBg),
+    frame: (t) => tryFg(theme, "borderMuted", t) ?? tryFg(theme, "border", t) ?? fgWrap(FALLBACK_FG, t),
+    prefix: (t) => tryFg(theme, "accent", t) ?? tryFg(theme, "border", t) ?? fgWrap(FALLBACK_FG, t),
+    time: (t) => tryFg(theme, "muted", t) ?? tryFg(theme, "accent", t) ?? fgWrap(FALLBACK_FG, t),
+    hint: (t) => tryFg(theme, "dim", t) ?? tryFg(theme, "muted", t) ?? fgWrap(FALLBACK_FG, t),
+  };
+}
+
+/** Set a bg color on the theme's internal bgColors map. */
+export function setThemeBg(theme: Theme, key: ThemeBg, ansi: string): void {
+  (theme as any)?.bgColors?.set(key, ansi);
 }

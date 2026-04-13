@@ -1,4 +1,5 @@
-import { BG_PANEL, RESET, FG_ACCENT } from "./visual.js";
+import type { Theme } from "@mariozechner/pi-coding-agent";
+import { RESET, resolvePalette, setThemeBg } from "./visual.js";
 
 // ── Constants ──────────────────────────────────────────────────────
 
@@ -22,12 +23,13 @@ function formatTime(ms: number): string {
 
 // ── Patch ──────────────────────────────────────────────────────────
 
-// Override user-message bg, widen padding, show response time
 export function patchUserMessage(
-  themeInstance: any,
+  getTheme: () => Theme,
   responseTimes: number[],
 ): void {
-  themeInstance.bgColors.set("userMessageBg", BG_PANEL);
+  const theme = getTheme();
+  const p = resolvePalette(theme);
+  setThemeBg(theme, "userMessageBg", p.panelBg);
 
   import("@mariozechner/pi-coding-agent").then(
     ({ UserMessageComponent }: any) => {
@@ -50,34 +52,33 @@ export function patchUserMessage(
       UserMessageComponent.prototype.render = function (
         width: number,
       ): string[] {
+        const currentTheme = getTheme();
+        const p = resolvePalette(currentTheme);
+        setThemeBg(currentTheme, "userMessageBg", p.panelBg);
+
         const idx = instanceIndex.get(this);
         const elapsed = idx !== undefined ? responseTimes[idx] : 0;
         const hasTime = idx !== undefined;
 
-        // Render narrower to reserve time column, so text wraps correctly
         const contentWidth = hasTime ? width - TIME_COL : width;
         const lines: string[] = origRender.call(this, contentWidth);
         if (lines.length < 3 || !hasTime) return lines;
 
-        // Build time column content
         const timeStr = elapsed > 0 ? formatTime(elapsed) : "";
-        const timeRight = 2; // right margin inside time column
+        const timeRight = 2;
+        const timeLabel = timeStr.length > 0 ? p.time(timeStr) : "";
         const timeContent =
-          FG_ACCENT +
-          timeStr +
-          RESET +
-          BG_PANEL +
+          timeLabel +
+          p.panelBg +
           " ".repeat(Math.max(0, TIME_COL - timeStr.length - timeRight)) +
           " ".repeat(timeRight);
-        const emptyTimeCol = BG_PANEL + " ".repeat(TIME_COL);
+        const emptyTimeCol = p.panelBg + " ".repeat(TIME_COL);
 
-        // lines[0] = spacer (no bg), lines[1] = paddingY top, lines[2] = first content
         const firstContent = 2;
 
         for (let i = 1; i < lines.length; i++) {
           let line = lines[i]!;
 
-          // Preserve OSC 133 end markers on last line
           let oscSuffix = "";
           const oscPos = line.indexOf(OSC133_B);
           if (oscPos >= 0) {
@@ -85,8 +86,7 @@ export function patchUserMessage(
             line = line.slice(0, oscPos);
           }
 
-          const col =
-            i === firstContent ? timeContent : emptyTimeCol;
+          const col = i === firstContent ? timeContent : emptyTimeCol;
           lines[i] = line + col + RESET + oscSuffix;
         }
 

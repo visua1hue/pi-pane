@@ -1,4 +1,8 @@
-import type { ExtensionAPI, KeybindingsManager } from "@mariozechner/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  Theme,
+  KeybindingsManager,
+} from "@mariozechner/pi-coding-agent";
 import type { TUI, EditorTheme } from "@mariozechner/pi-tui";
 import { PiPaneEditor } from "./editor.js";
 import { patchUserMessage } from "./message.js";
@@ -29,11 +33,14 @@ export default function piPaneExtension(pi: ExtensionAPI) {
       ui[REAL_SET_EDITOR] ?? ctx.ui.setEditorComponent;
     ui[REAL_SET_EDITOR] = realSetEditor;
 
+    const getTheme = () => (ctx.ui as any).theme as Theme;
+
     ctx.ui.setWorkingMessage("\u200b");
-    patchUserMessage(ctx.ui.theme, responseTimes);
+    patchUserMessage(getTheme, responseTimes);
     realSetEditor(
       (tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) =>
         new PiPaneEditor(tui, theme, keybindings, {
+          getTheme,
           isIdle: () => ctx.isIdle(),
           shutdown: () => ctx.shutdown(),
         }),
