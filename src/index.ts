@@ -6,6 +6,7 @@ import type {
 import type { TUI, EditorTheme } from "@mariozechner/pi-tui";
 import { PiPaneEditor } from "./editor.js";
 import { patchUserMessage } from "./message.js";
+import { renderHeader, patchStartupListing, type ListingRef } from "./startup.js";
 
 // Survives module reloads — Symbol.for() returns the same ref
 const REAL_SET_EDITOR = Symbol.for("pi-pane:realSetEditor");
@@ -33,10 +34,21 @@ export default function piPaneExtension(pi: ExtensionAPI) {
       ui[REAL_SET_EDITOR] ?? ctx.ui.setEditorComponent;
     ui[REAL_SET_EDITOR] = realSetEditor;
 
-    const getTheme = () => (ctx.ui as any).theme as Theme;
+    const getTheme = () => ui.theme as Theme;
 
     ctx.ui.setWorkingMessage("\u200b");
     patchUserMessage(getTheme, responseTimes);
+
+    // Custom header + intercept TUI ref for listing patch
+    const listingRef: ListingRef = { sections: [], frame: 0, revealed: false, revealedAt: 0, settled: false };
+    ctx.ui.setHeader((tui, theme) => {
+      patchStartupListing(tui, theme, listingRef);
+      return {
+        render: (w: number) => renderHeader(theme, listingRef, w),
+        invalidate() {},
+      };
+    });
+
     realSetEditor(
       (tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) =>
         new PiPaneEditor(tui, theme, keybindings, {
