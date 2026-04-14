@@ -122,8 +122,8 @@ const DEBOUNCE_TIMER = Symbol.for("pi-pane:debounceTimer");
 const MAX_RENDER_WIDTH = 9999;
 const REVEAL_DEBOUNCE_MS = 150;
 const RAMP_FRAMES = 22;
-const STAGGER_FRAMES = 6;
-const BASE_FADE_DELAY = 8;
+const STAGGER_FRAMES = 0;
+const BASE_FADE_DELAY = 3;
 const MAX_STAGGER = BASE_FADE_DELAY + 5 * STAGGER_FRAMES; // base delay + max section index
 
 // ── Version fetch ──────────────────────────────────────────────────────────
@@ -247,10 +247,10 @@ function formatColumns(sections: RenderSection[], theme: Theme, maxW: number, re
   const age = ref.revealed ? ref.frame - ref.revealedAt : 0;
 
   // RGB interpolation only when truecolor + actively ramping
-  let dimRgb: [number, number, number] | undefined;
+  let startRgb: [number, number, number] | undefined;
   let mutedRgb: [number, number, number] | undefined;
   if (TRUECOLOR && ref.revealed && age < RAMP_FRAMES + MAX_STAGGER) {
-    dimRgb = extractRgb(theme.fg("dim", " "));
+    startRgb = extractRgb(theme.fg("dim", " "));
     mutedRgb = extractRgb(theme.fg("muted", " "));
   }
 
@@ -267,7 +267,7 @@ function formatColumns(sections: RenderSection[], theme: Theme, maxW: number, re
 
     // Item color: smooth ramp if truecolor + animating, otherwise straight to muted
     const sectionAge = Math.max(0, age - BASE_FADE_DELAY - si * STAGGER_FRAMES);
-    const wrapItems = buildItemWrapper(sectionAge, ref.revealed, dimRgb, mutedRgb, muted);
+    const wrapItems = buildItemWrapper(sectionAge, ref.revealed, startRgb, mutedRgb, muted);
 
     let currentLine = "";
     let firstLine = true;
@@ -299,20 +299,20 @@ function formatColumns(sections: RenderSection[], theme: Theme, maxW: number, re
 function buildItemWrapper(
   sectionAge: number,
   revealed: boolean,
-  dimRgb: [number, number, number] | undefined,
+  startRgb: [number, number, number] | undefined,
   mutedRgb: [number, number, number] | undefined,
   muted: (t: string) => string,
 ): (text: string) => string {
   if (!revealed) return (text) => text; // placeholders already styled
 
   // No truecolor or ramp done → static muted
-  if (!dimRgb || !mutedRgb || sectionAge >= RAMP_FRAMES) return muted;
+  if (!startRgb || !mutedRgb || sectionAge >= RAMP_FRAMES) return muted;
 
   const t = Math.min(1, sectionAge / RAMP_FRAMES);
   const eased = 1 - (1 - t) * (1 - t);
-  const r = lerp(dimRgb[0], mutedRgb[0], eased);
-  const g = lerp(dimRgb[1], mutedRgb[1], eased);
-  const b = lerp(dimRgb[2], mutedRgb[2], eased);
+  const r = lerp(startRgb[0], mutedRgb[0], eased);
+  const g = lerp(startRgb[1], mutedRgb[1], eased);
+  const b = lerp(startRgb[2], mutedRgb[2], eased);
   return (text) => rgb(r, g, b, text);
 }
 
