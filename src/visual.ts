@@ -71,7 +71,7 @@ export function resolvePalette(theme: Theme): PanePalette {
     panelBg,
     panelEdge: bgToFgAnsi(panelBg),
     frame: (t) => tryFg(theme, "borderMuted", t) ?? tryFg(theme, "border", t) ?? fgWrap(FALLBACK_FG, t),
-    prefix: (t) => tryFg(theme, "accent", t) ?? tryFg(theme, "border", t) ?? fgWrap(FALLBACK_FG, t),
+    prefix: (t) => tryFg(theme, "borderMuted", t) ?? tryFg(theme, "border", t) ?? fgWrap(FALLBACK_FG, t),
     time: (t) => tryFg(theme, "muted", t) ?? tryFg(theme, "accent", t) ?? fgWrap(FALLBACK_FG, t),
     hint: (t) => tryFg(theme, "dim", t) ?? tryFg(theme, "muted", t) ?? fgWrap(FALLBACK_FG, t),
   };
