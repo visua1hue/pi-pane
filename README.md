@@ -9,10 +9,13 @@ Framed input with a `pi` prefix, panel background, user message styling with res
 
 ## Features
 
-- **Framed editor** — bordered input with `pi` prefix and dark panel bg
+- **Custom header** — animated logo with section listing (context, prompts, skills, extensions, themes)
+- **Framed editor** — bordered input with `pi` prefix and panel background
 - **Response time** — per-message timing on user messages
+- **Theme-aware** — colors resolve from the active pi theme
+- **Origin prefixes** — `npm:` / `git:` tags on extensions and skills
 - **Quit guard** — double-press to exit, single press clears input
-- **Autocomplete alignment** — indented to match editor prefix
+- **Stable layout** — consistent width during LLM streaming
 
 ## Install Extension
 
@@ -34,9 +37,7 @@ Add to `~/.pi/agent/settings.json`:
 
 ```json
 {
-  "extensions": [
-    "/path/to/pi-pane/src/index.ts"
-  ]
+  "extensions": ["/path/to/pi-pane/src/index.ts"]
 }
 ```
 

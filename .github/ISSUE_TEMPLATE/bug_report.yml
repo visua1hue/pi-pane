@@ -1,0 +1,70 @@
+name: Bug Report
+description: Report a rendering or layout issue
+labels: ["bug"]
+body:
+  - type: input
+    id: pi-version
+    attributes:
+      label: Pi version
+      description: Shown in the header or run `pi --version`
+      placeholder: "0.67.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows (WSL)
+        - Windows (native)
+    validations:
+      required: true
+
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal emulator
+      description: e.g. iTerm2, WezTerm, Ghostty, VS Code, Windows Terminal, Alacritty
+      placeholder: "iTerm2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: thinking
+    attributes:
+      label: Thinking/reasoning visibility
+      description: Is the thinking block shown or hidden?
+      options:
+        - Shown
+        - Hidden
+        - Both
+        - N/A
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the issue briefly
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Paste a screenshot showing the issue. This is critical for layout bugs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Anything else — multiplexer (tmux/zellij), theme, steps to reproduce
+    validations:
+      required: false
