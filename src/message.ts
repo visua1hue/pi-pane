@@ -13,6 +13,10 @@ const TIME_COL = 9;
 const instanceIndex = new WeakMap<object, number>();
 let instanceCount = 0;
 
+export function resetInstanceCount(): void {
+  instanceCount = 0;
+}
+
 function formatTime(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;

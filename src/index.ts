@@ -40,7 +40,7 @@ export default function piPaneExtension(pi: ExtensionAPI) {
     patchUserMessage(getTheme, responseTimes);
 
     // Custom header + intercept TUI ref for listing patch
-    const listingRef: ListingRef = { sections: [], frame: 0, revealed: false, revealedAt: 0, settled: false };
+    const listingRef: ListingRef = { sections: [], frame: 0, revealed: false, revealedAt: 0, scaffoldAt: 0, settled: false };
     ctx.ui.setHeader((tui, theme) => {
       patchStartupListing(tui, theme, listingRef);
       return {

@@ -1,4 +1,5 @@
 import { VERSION, type Theme } from "@mariozechner/pi-coding-agent";
+import { resetInstanceCount } from "./message.js";
 import {
   Text,
   Spacer,
@@ -104,14 +105,17 @@ export interface ListingRef {
   frame: number;
   revealed: boolean;
   revealedAt: number;
+  scaffoldAt: number;
   latestVersion?: string;
   settled: boolean;
   cachedLines?: string[];
   cachedWidth?: number;
+  maxHeaderHeight?: number;
 }
 
 // ── Symbols (survive hot-reload) ───────────────────────────────────────────
 
+const PATCHED_CLEAR = Symbol.for("pi-pane:clearPatched");
 const PATCHED_LISTING = Symbol.for("pi-pane:listingPatched");
 const LISTING_REF = Symbol.for("pi-pane:listingRef");
 const ANIM_INTERVAL = Symbol.for("pi-pane:animInterval");
@@ -120,6 +124,7 @@ const DEBOUNCE_TIMER = Symbol.for("pi-pane:debounceTimer");
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const MAX_RENDER_WIDTH = 9999;
+const MIN_HEADER_LINES = 11;
 const REVEAL_DEBOUNCE_MS = 150;
 const RAMP_FRAMES = 22;
 const STAGGER_FRAMES = 0;
@@ -173,28 +178,18 @@ export function renderHeader(theme: Theme, ref: ListingRef, width: number): stri
     const sectionsToRender: RenderSection[] = [];
 
     if (!ref.revealed) {
-      if (TRUECOLOR) {
-        const pulse = Math.sin(ref.frame / 18) * 0.5 + 0.5;
-        const b = Math.floor(40 + pulse * 35);
-        const dots = gray(b, "···");
-        sectionsToRender.push({ name: "Version", items: [dots] });
-        for (const key of SECTION_KEYS) sectionsToRender.push({ name: key, items: [dots] });
-      } else {
-        const dots = dim("···");
-        sectionsToRender.push({ name: "Version", items: [dots] });
-        for (const key of SECTION_KEYS) sectionsToRender.push({ name: key, items: [dots] });
-      }
+      // Logo only — sections appear together on reveal
     } else {
       const latest = ref.latestVersion ?? VERSION;
       const hasUpdate = compareVersions(latest, VERSION) > 0;
       const latestStr = hasUpdate ? `Latest: ${accent("v" + latest)}` : `Latest: v${latest}`;
       sectionsToRender.push({ name: "Version", items: [`Local: v${VERSION}`, latestStr] });
 
-      // Display sections in SECTION_KEYS order, fill missing with placeholder
+      // Display sections in SECTION_KEYS order, skip empty
       const byName = new Map(ref.sections.map(s => [s.name, s]));
       for (const key of SECTION_KEYS) {
         const sec = byName.get(key);
-        sectionsToRender.push(sec ?? { name: key, items: [dim("—")] });
+        if (sec && sec.items.length > 0) sectionsToRender.push(sec);
       }
     }
 
@@ -222,10 +217,10 @@ export function renderHeader(theme: Theme, ref: ListingRef, width: number): stri
     result.push(truncateToWidth(line, width));
   }
 
-  // Fixed height — Pi doesn't clear below the header when height changes,
-  // so we must pad to a constant to prevent ghost lines from shorter renders.
-  const HEADER_LINES = 11;
-  while (result.length < HEADER_LINES) result.push("");
+  // Pi doesn't clear below the header when height shrinks,
+  // so track the max height seen to prevent ghost lines.
+  ref.maxHeaderHeight = Math.max(ref.maxHeaderHeight ?? MIN_HEADER_LINES, result.length);
+  while (result.length < ref.maxHeaderHeight) result.push("");
   return result;
 }
 
@@ -244,13 +239,17 @@ function formatColumns(sections: RenderSection[], theme: Theme, maxW: number, re
 
   const headerW = Math.max(...sections.map(s => s.name.length + 2)) + 2;
 
-  const age = ref.revealed ? ref.frame - ref.revealedAt : 0;
+  const itemAge = ref.revealed ? ref.frame - ref.revealedAt : 0;
+  const labelAge = ref.revealed ? ref.frame - ref.scaffoldAt : 0;
 
-  // RGB interpolation only when truecolor + actively ramping
-  let startRgb: [number, number, number] | undefined;
+  // RGB endpoints for fade ramps (truecolor only)
+  const fadeStartRgb: [number, number, number] = [20, 20, 20];
+  let dimRgb: [number, number, number] | undefined;
   let mutedRgb: [number, number, number] | undefined;
-  if (TRUECOLOR && ref.revealed && age < RAMP_FRAMES + MAX_STAGGER) {
-    startRgb = extractRgb(theme.fg("dim", " "));
+  const labelRamping = TRUECOLOR && ref.revealed && labelAge < RAMP_FRAMES + MAX_STAGGER;
+  const itemRamping = TRUECOLOR && ref.revealed && itemAge < RAMP_FRAMES + MAX_STAGGER;
+  if (labelRamping || itemRamping) {
+    dimRgb = extractRgb(theme.fg("dim", " "));
     mutedRgb = extractRgb(theme.fg("muted", " "));
   }
 
@@ -260,16 +259,33 @@ function formatColumns(sections: RenderSection[], theme: Theme, maxW: number, re
     const sec = sections[si];
     if (sec.items.length === 0) continue;
 
-    // Labels are always static dim — never re-animated
-    const header = dim(`[${sec.name}]`);
-    const paddedHeader = header + " ".repeat(Math.max(0, headerW - sec.name.length - 2));
     const availableW = maxW - headerW - 1;
 
-    // Item color: smooth ramp if truecolor + animating, otherwise straight to muted
-    const sectionAge = Math.max(0, age - BASE_FADE_DELAY - si * STAGGER_FRAMES);
-    const wrapItems = buildItemWrapper(sectionAge, ref.revealed, startRgb, mutedRgb, muted);
+    // Label fade: near-invisible → dim (static dim when not revealed)
+    const secLabelAge = Math.max(0, labelAge - BASE_FADE_DELAY - si * STAGGER_FRAMES);
+    const wrapLabel = ref.revealed
+      ? buildItemWrapper(secLabelAge, true, fadeStartRgb, dimRgb, dim)
+      : dim;
+    const header = wrapLabel(`[${sec.name}]`);
+    const paddedHeader = header + " ".repeat(Math.max(0, headerW - sec.name.length - 2));
+
+    // Item fade: near-invisible → muted
+    const secItemAge = Math.max(0, itemAge - BASE_FADE_DELAY - si * STAGGER_FRAMES);
+    const wrapItems = buildItemWrapper(secItemAge, ref.revealed, fadeStartRgb, mutedRgb, muted);
+
+    // Style prefix (npm:/git:) dimmer than the name
+    const styleItem = (raw: string): string => {
+      const prefixMatch = raw.match(/^(npm:|git:)/);
+      if (prefixMatch) {
+        const pfx = prefixMatch[1];
+        const name = raw.slice(pfx.length);
+        return wrapLabel(pfx) + wrapItems(name);
+      }
+      return wrapItems(raw);
+    };
 
     let currentLine = "";
+    let currentStyled = "";
     let firstLine = true;
 
     for (const item of sec.items) {
@@ -277,15 +293,17 @@ function formatColumns(sections: RenderSection[], theme: Theme, maxW: number, re
       const currentW = visibleWidth(currentLine);
 
       if (currentLine && currentW + 2 + itemW > availableW) {
-        lines.push(firstLine ? `${paddedHeader} ${wrapItems(currentLine)}` : " ".repeat(headerW + 1) + wrapItems(currentLine));
+        lines.push(firstLine ? `${paddedHeader} ${currentStyled}` : " ".repeat(headerW + 1) + currentStyled);
         currentLine = item;
+        currentStyled = styleItem(item);
         firstLine = false;
       } else {
         currentLine = currentLine ? currentLine + "  " + item : item;
+        currentStyled = currentStyled ? currentStyled + "  " + styleItem(item) : styleItem(item);
       }
     }
     if (currentLine) {
-      lines.push(firstLine ? `${paddedHeader} ${wrapItems(currentLine)}` : " ".repeat(headerW + 1) + wrapItems(currentLine));
+      lines.push(firstLine ? `${paddedHeader} ${currentStyled}` : " ".repeat(headerW + 1) + currentStyled);
     }
 
     if (sec.name === "Version") {
@@ -331,65 +349,108 @@ function parseSectionText(plain: string): ParsedSection | undefined {
 
   const names: string[] = [];
   const lines = plain.split("\n");
+  let currentSource = "";
+  let sourceIndent = 0;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     if (trimmed.startsWith("[")) continue;
-    if (/^(user|project|path)$/.test(trimmed)) continue;
+    if (/^(user|project|path)$/.test(trimmed)) { currentSource = ""; sourceIndent = 0; continue; }
+
+    const indent = line.length - line.trimStart().length;
+
+    // Track package source headers (e.g. "git:github.com/...", "npm:@foo/bar")
+    // Extract name from the header itself + let children inherit the prefix
+    if (/^(git:|npm:)\S+\//.test(trimmed)) {
+      currentSource = trimmed.startsWith("git:") ? "git:" : "npm:";
+      sourceIndent = indent;
+      // Extract name from source header (e.g. "npm:@foo/pi-tavily-tools" → "npm:pi-tavily-tools")
+      const showSource = sectionName === "Extensions" || sectionName === "Skills";
+      const name = extractName(trimmed, sectionName);
+      if (name && showSource) names.push(name);
+      continue;
+    }
+
+    // Reset source prefix when indent returns to source level or shallower
+    if (currentSource && indent <= sourceIndent) {
+      currentSource = "";
+      sourceIndent = 0;
+    }
 
     if (/^(index\.(ts|js)|src|dist|out|build|lib|bin)$/i.test(trimmed)) continue;
-    if (trimmed.endsWith("index.js") || trimmed.endsWith("index.ts")) {
-       if (trimmed.split("/").length <= 2 && /^(dist|src|out|lib|bin)/.test(trimmed)) continue;
+    // Skip resolved file paths only under source headers (e.g. "dist/index.js" under npm:)
+    if (currentSource) {
+      if (/\/(src|dist|out|build|lib|bin)\//.test(trimmed)) continue;
+      if (/\.(ts|js)$/.test(trimmed) && trimmed.includes("/") && !/SKILL\.(ts|js)$/i.test(trimmed)) continue;
     }
 
     const name = extractName(trimmed, sectionName);
-    if (name) names.push(name);
+    // Prompts/Context don't need source prefix — only Extensions/Skills
+    const showSource = sectionName === "Extensions" || sectionName === "Skills";
+    if (name) names.push(showSource && currentSource ? currentSource + name : name);
   }
 
-  return { name: sectionName, items: [...new Set(names.filter(n => !/^(index|dist|src|out|lib|bin)$/i.test(n)))] };
+  // Deduplicate by bare name (without prefix) — prefer prefixed version
+  const seen = new Map<string, string>();
+  for (const n of names) {
+    if (/^(index|dist|src|out|lib|bin)$/i.test(n)) continue;
+    const bare = n.replace(/^(npm:|git:)/, "");
+    if (!seen.has(bare) || n.includes(":")) seen.set(bare, n);
+  }
+  return { name: sectionName, items: [...seen.values()] };
+}
+
+function detectOrigin(path: string): { prefix: string; clean: string } {
+  if (/^npm:/.test(path)) return { prefix: "npm:", clean: path.slice(4) };
+  if (/^git:/.test(path)) return { prefix: "git:", clean: path.slice(4) };
+  if (/^https?:\/\//.test(path)) return { prefix: "git:", clean: path };
+  return { prefix: "", clean: path };
+}
+
+function cleanName(name: string): string {
+  return name.replace(/\.(ts|js|json|md|git)$/i, "");
 }
 
 function extractName(path: string, section: string): string {
-  if (section === "Prompts") return path.trim();
-
   const trimmed = path.trim();
+  const { prefix, clean } = detectOrigin(trimmed);
 
-  if (section === "Skills" && trimmed.includes("/")) {
-    const parts = trimmed.split("/");
+  if (section === "Prompts") {
+    // Extract prompt name from path (e.g. "/write-plan-implement" → "/write-plan-implement")
+    const base = clean.split("/").pop() ?? clean;
+    return cleanName(base) || clean;
+  }
+
+  if (section === "Skills" && clean.includes("/")) {
+    const parts = clean.split("/");
     const file = parts.pop() ?? "";
     if (/^SKILL\.(md|ts|js)$/i.test(file)) {
-      return parts.pop() ?? file;
+      return prefix + cleanName(parts.pop() ?? file);
     }
-    return file.replace(/\.(ts|js|md)$/, "");
+    return prefix + cleanName(file);
   }
 
   if (section === "Context") {
-    return trimmed.split("/").pop() ?? trimmed;
+    return clean.split("/").pop() ?? clean;
   }
 
   if (section === "Extensions") {
-    if (/^(git:|npm:|https?:)/.test(trimmed)) {
-      const parts = trimmed.split("/");
-      const last = parts.pop() || "";
-      return last.replace(/\.(ts|js)$/, "");
-    }
-
-    const parts = trimmed.split("/").filter(p => {
+    const stripped = clean.replace(/^https?:\/\/[^/]+\//, "");
+    const parts = stripped.split("/").filter(p => {
       const lower = p.toLowerCase();
       return p && !/^(index\.(ts|js)|src|dist|out|build|lib|bin)$/.test(lower);
     });
 
     if (parts.length > 0) {
-      const name = parts.pop()!;
-      return name.replace(/\.(ts|js|json|md)$/i, "");
+      return prefix + cleanName(parts.pop()!);
     }
 
-    return trimmed;
+    return prefix + cleanName(clean);
   }
 
-  const base = trimmed.split("/").pop() ?? trimmed;
-  return base.replace(/\.(ts|js|json|md)$/, "");
+  const base = clean.split("/").pop() ?? clean;
+  return prefix + cleanName(base);
 }
 
 // ── Chat container discovery ────────────────────────────────────────────────
@@ -423,9 +484,11 @@ export function patchStartupListing(
   ref.frame = 0;
   ref.revealed = false;
   ref.revealedAt = 0;
+  ref.scaffoldAt = 0;
   ref.settled = false;
   ref.cachedLines = undefined;
   ref.cachedWidth = undefined;
+  ref.maxHeaderHeight = undefined;
 
   if (cc[ANIM_INTERVAL]) clearInterval(cc[ANIM_INTERVAL]);
   if (cc[DEBOUNCE_TIMER]) clearTimeout(cc[DEBOUNCE_TIMER]);
@@ -454,6 +517,16 @@ export function patchStartupListing(
       current.settled = false;
     }
   });
+
+  // Patch clear() to reset message instance tracking on container rebuild
+  if (!cc[PATCHED_CLEAR]) {
+    cc[PATCHED_CLEAR] = true;
+    const origClear = chat.clear.bind(chat);
+    chat.clear = () => {
+      resetInstanceCount();
+      return origClear();
+    };
+  }
 
   // Only patch addChild once — the closure reads cc[LISTING_REF] dynamically
   if (cc[PATCHED_LISTING]) {
@@ -495,6 +568,7 @@ export function patchStartupListing(
             const ref: ListingRef = cc[LISTING_REF];
             ref.revealed = true;
             ref.revealedAt = ref.frame;
+            ref.scaffoldAt = ref.frame;
             tui.requestRender();
             cc[DEBOUNCE_TIMER] = null;
           }, REVEAL_DEBOUNCE_MS);
