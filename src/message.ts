@@ -60,9 +60,9 @@ export function patchUserMessage(
         const elapsed = idx !== undefined ? responseTimes[idx] : 0;
         const hasTime = idx !== undefined;
 
-        const contentWidth = hasTime ? width - TIME_COL : width;
+        const contentWidth = width - TIME_COL;
         const lines: string[] = origRender.call(this, contentWidth);
-        if (lines.length < 3 || !hasTime) return lines;
+        if (lines.length < 3) return lines;
 
         const timeStr = elapsed > 0 ? formatTime(elapsed) : "";
         const timeRight = 2;
@@ -86,7 +86,7 @@ export function patchUserMessage(
             line = line.slice(0, oscPos);
           }
 
-          const col = i === firstContent ? timeContent : emptyTimeCol;
+          const col = i === firstContent && hasTime ? timeContent : emptyTimeCol;
           lines[i] = line + col + RESET + oscSuffix;
         }
 
