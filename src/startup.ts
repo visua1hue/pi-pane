@@ -594,7 +594,7 @@ export function patchStartupListing(
       }
     }
 
-    if (component instanceof Spacer) return;
+    if (component instanceof Spacer && !currentRef.revealed) return;
     origAddChild(component);
   };
 }

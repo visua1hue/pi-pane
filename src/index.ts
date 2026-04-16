@@ -61,7 +61,7 @@ function suppressStdout(): void {
   const safetyTimer = setTimeout(() => {
     process.stdout.write = origWrite;
     delete g[STDOUT_RESTORE];
-  }, 5000);
+  }, 2000);
 
   g[STDOUT_RESTORE] = () => {
     clearTimeout(safetyTimer);

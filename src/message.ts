@@ -31,9 +31,11 @@ export function patchUserMessage(
   getTheme: () => Theme,
   responseTimes: number[],
 ): void {
+  let lastBg = "";
   const theme = getTheme();
   const p = resolvePalette(theme);
-  setThemeBg(theme, "userMessageBg", p.panelBg);
+  lastBg = p.panelBg;
+  setThemeBg(theme, "userMessageBg", lastBg);
 
   import("@mariozechner/pi-coding-agent").then(
     ({ UserMessageComponent }: any) => {
@@ -58,7 +60,8 @@ export function patchUserMessage(
       ): string[] {
         const currentTheme = getTheme();
         const p = resolvePalette(currentTheme);
-        setThemeBg(currentTheme, "userMessageBg", p.panelBg);
+        const bg = p.panelBg;
+        if (bg !== lastBg) { setThemeBg(currentTheme, "userMessageBg", bg); lastBg = bg; }
 
         const idx = instanceIndex.get(this);
         const elapsed = idx !== undefined ? responseTimes[idx] : 0;
