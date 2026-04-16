@@ -3,7 +3,7 @@ import type {
   Theme,
   KeybindingsManager,
 } from "@mariozechner/pi-coding-agent";
-import type { TUI, EditorTheme } from "@mariozechner/pi-tui";
+import { Spacer, type TUI, type EditorTheme } from "@mariozechner/pi-tui";
 import { PiPaneEditor } from "./editor.js";
 import { patchUserMessage } from "./message.js";
 import { renderHeader, patchStartupListing, type ListingRef } from "./startup.js";
@@ -35,36 +35,32 @@ if (!g[PATCHED_LOG]) {
   };
 }
 
-// ── Suppress built-in header flash ──────────────────────────────────────────
-// Pi calls this.ui.start() (first render with keybinding hints header) before
-// extensions load via bindCurrentSessionExtensions(). With many extensions the
-// built-in header is visible for up to ~1s before our setHeader replaces it.
+// ── Suppress render frames (startup flash + /reload loader) ─────────────────
+// Used in two scenarios:
+// 1. Initial startup: pi renders built-in header before extensions load
+// 2. /reload: pi shows BorderedLoader before extensions re-initialize
 //
-// Fix: suppress stdout render frames at module load time. Pure ANSI control
-// sequences (cursor hide, bracketed paste, kitty protocol) pass through so
-// terminal setup is preserved. Restored in session_start before a forced
-// full redraw. Safety timeout auto-restores after 5s if session_start never
-// fires (e.g. non-interactive mode or extension error).
-const PATCHED_STDOUT = Symbol.for("pi-pane:stdoutPatched");
+// Pure ANSI control sequences (cursor hide, bracketed paste, kitty protocol)
+// pass through so terminal setup is preserved. Restored in session_start
+// before a forced full redraw. Safety timeout auto-restores after 5s.
 const STDOUT_RESTORE = Symbol.for("pi-pane:stdoutRestore");
 const ANSI_SEQ_RE = /\x1b(?:\[[^a-zA-Z~]*[a-zA-Z~]|\][^\x07]*\x07)/g;
 
-if (!g[PATCHED_STDOUT]) {
-  g[PATCHED_STDOUT] = true;
+function suppressStdout(): void {
+  if (g[STDOUT_RESTORE]) return; // already active
   const origWrite = process.stdout.write.bind(process.stdout);
 
   process.stdout.write = function (chunk: any, ...args: any[]): boolean {
     const str = typeof chunk === "string"
       ? chunk
       : Buffer.isBuffer(chunk) ? chunk.toString("utf8") : null;
-    // Visible content after stripping ANSI = render frame → suppress
-    // Pure control sequences (no visible chars) = terminal setup → allow
     if (str !== null && /\S/.test(str.replace(ANSI_SEQ_RE, ""))) return true;
     return origWrite(chunk, ...args);
   } as typeof process.stdout.write;
 
   const safetyTimer = setTimeout(() => {
     process.stdout.write = origWrite;
+    delete g[STDOUT_RESTORE];
   }, 5000);
 
   g[STDOUT_RESTORE] = () => {
@@ -73,6 +69,9 @@ if (!g[PATCHED_STDOUT]) {
     delete g[STDOUT_RESTORE];
   };
 }
+
+// Activate on initial startup
+suppressStdout();
 
 export default function piPaneExtension(pi: ExtensionAPI) {
   const responseTimes: number[] = [];
@@ -111,11 +110,26 @@ export default function piPaneExtension(pi: ExtensionAPI) {
     let tuiRef: TUI | undefined;
     ctx.ui.setHeader((tui, theme) => {
       tuiRef = tui;
+
+      // Neuter the built-in header so /reload doesn't flash keybinding hints.
+      // On reset, pi restores builtInHeader into headerContainer — if its
+      // render returns empty, the flash is invisible.
+      const hc = tui.children[0] as any;
+      if (hc?.children) {
+        for (const child of hc.children) {
+          if (child instanceof Spacer) continue;
+          if ((child as any)._piPane) continue;
+          child.render = () => [""];
+        }
+      }
+
       patchStartupListing(tui, theme, listingRef);
       return {
+        _piPane: true,
         render: (w: number) => renderHeader(theme, listingRef, w),
         invalidate() {},
-      };
+        dispose() { suppressStdout(); },
+      } as any;
     });
 
     // Restore stdout and force full redraw — the TUI's diff state is stale
