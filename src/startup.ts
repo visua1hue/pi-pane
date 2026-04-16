@@ -86,7 +86,7 @@ const LOGO_GAP = 4;
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-const SECTION_KEYS = ["Context", "Prompts", "Skills", "Extensions", "Themes"] as const;
+const SECTION_KEYS = ["Models", "Context", "Prompts", "Skills", "Extensions", "Themes"] as const;
 type SectionKey = (typeof SECTION_KEYS)[number];
 type RenderSectionKey = SectionKey | "Version";
 
@@ -401,6 +401,14 @@ function parseSectionText(plain: string): ParsedSection | undefined {
   return { name: sectionName, items: [...seen.values()] };
 }
 
+function parseModelScope(plain: string): ParsedSection | undefined {
+  const m = plain.match(/Model scope:\s*(.+)/i);
+  if (!m) return undefined;
+  const raw = m[1].replace(/\s*\(Ctrl\+\w[\w\s]*\)/gi, "");
+  const items = raw.split(",").map(s => s.trim()).filter(Boolean);
+  return items.length > 0 ? { name: "Models", items } : undefined;
+}
+
 function detectOrigin(path: string): { prefix: string; clean: string } {
   if (/^npm:/.test(path)) return { prefix: "npm:", clean: path.slice(4) };
   if (/^git:/.test(path)) return { prefix: "git:", clean: path.slice(4) };
@@ -545,7 +553,7 @@ export function patchStartupListing(
       const rendered = component.render(MAX_RENDER_WIDTH);
       const plain = stripAnsi(rendered.join("\n"));
 
-      const section = parseSectionText(plain);
+      const section = parseSectionText(plain) ?? parseModelScope(plain);
       if (section) {
         const existing = currentRef.sections.find(s => s.name === section.name);
         if (existing) {
