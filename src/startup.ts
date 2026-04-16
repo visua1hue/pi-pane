@@ -577,6 +577,8 @@ export function patchStartupListing(
             ref.revealed = true;
             ref.revealedAt = ref.frame;
             ref.scaffoldAt = ref.frame;
+            // Restore original addChild — startup listing captured, get out of the hot path
+            chat.addChild = origAddChild;
             tui.requestRender();
             cc[DEBOUNCE_TIMER] = null;
           }, REVEAL_DEBOUNCE_MS);

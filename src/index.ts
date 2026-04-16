@@ -35,44 +35,6 @@ if (!g[PATCHED_LOG]) {
   };
 }
 
-// ── Suppress render frames (startup flash + /reload loader) ─────────────────
-// Used in two scenarios:
-// 1. Initial startup: pi renders built-in header before extensions load
-// 2. /reload: pi shows BorderedLoader before extensions re-initialize
-//
-// Pure ANSI control sequences (cursor hide, bracketed paste, kitty protocol)
-// pass through so terminal setup is preserved. Restored in session_start
-// before a forced full redraw. Safety timeout auto-restores after 5s.
-const STDOUT_RESTORE = Symbol.for("pi-pane:stdoutRestore");
-const ANSI_SEQ_RE = /\x1b(?:\[[^a-zA-Z~]*[a-zA-Z~]|\][^\x07]*\x07)/g;
-
-function suppressStdout(): void {
-  if (g[STDOUT_RESTORE]) return; // already active
-  const origWrite = process.stdout.write.bind(process.stdout);
-
-  process.stdout.write = function (chunk: any, ...args: any[]): boolean {
-    const str = typeof chunk === "string"
-      ? chunk
-      : Buffer.isBuffer(chunk) ? chunk.toString("utf8") : null;
-    if (str !== null && /\S/.test(str.replace(ANSI_SEQ_RE, ""))) return true;
-    return origWrite(chunk, ...args);
-  } as typeof process.stdout.write;
-
-  const safetyTimer = setTimeout(() => {
-    process.stdout.write = origWrite;
-    delete g[STDOUT_RESTORE];
-  }, 2000);
-
-  g[STDOUT_RESTORE] = () => {
-    clearTimeout(safetyTimer);
-    process.stdout.write = origWrite;
-    delete g[STDOUT_RESTORE];
-  };
-}
-
-// Activate on initial startup
-suppressStdout();
-
 export default function piPaneExtension(pi: ExtensionAPI) {
   const responseTimes: number[] = [];
   let turnStartMs = 0;
@@ -107,9 +69,7 @@ export default function piPaneExtension(pi: ExtensionAPI) {
       ? [{ name: "Models" as const, items: capturedModels }]
       : [];
     const listingRef: ListingRef = { sections: initialSections, frame: 0, revealed: false, revealedAt: 0, scaffoldAt: 0, settled: false };
-    let tuiRef: TUI | undefined;
     ctx.ui.setHeader((tui, theme) => {
-      tuiRef = tui;
 
       // Neuter the built-in header so /reload doesn't flash keybinding hints.
       // On reset, pi restores builtInHeader into headerContainer — if its
@@ -128,17 +88,9 @@ export default function piPaneExtension(pi: ExtensionAPI) {
         _piPane: true,
         render: (w: number) => renderHeader(theme, listingRef, w),
         invalidate() {},
-        dispose() { suppressStdout(); },
+        dispose() {},
       } as any;
     });
-
-    // Restore stdout and force full redraw — the TUI's diff state is stale
-    // because suppressed renders updated internal tracking without writing.
-    const restoreStdout: (() => void) | undefined = g[STDOUT_RESTORE];
-    if (restoreStdout) {
-      restoreStdout();
-      if (tuiRef) (tuiRef as any).requestRender(true);
-    }
 
     realSetEditor(
       (tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) =>
