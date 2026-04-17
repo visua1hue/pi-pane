@@ -8,6 +8,11 @@ UI extension for [pi](https://pi.dev/), the AI coding agent by [Mario Zechner](h
 
 ## Features
 
+<details>
+  <summary>·· Preview (Expand)</summary>
+  <video src="https://github.com/user-attachments/assets/e2029328-c352-4f7d-b0a8-6ff8bae524c4" controls></video>
+</details>
+
 - **Custom header** — animated logo with aligned, compact startup sections
 - **Version check** — local vs latest pi version on startup
 - **Origin prefixes** — `git:` / `npm:` source tags on extensions and skills
