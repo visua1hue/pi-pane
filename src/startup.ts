@@ -550,8 +550,13 @@ export function patchStartupListing(
     const currentRef: ListingRef = cc[LISTING_REF];
 
     if (component instanceof Text) {
-      const rendered = component.render(MAX_RENDER_WIDTH);
-      const plain = stripAnsi(rendered.join("\n"));
+      // pi ≥0.67.6 wraps startup sections in ExpandableText; collapsed body
+      // is a lossy comma-joined base-name list. Parse the expanded text so
+      // Extensions keep real names instead of "index.ts/index.js/index".
+      const getExpanded = (component as any).getExpandedText;
+      const plain = typeof getExpanded === "function"
+        ? stripAnsi(getExpanded.call(component))
+        : stripAnsi(component.render(MAX_RENDER_WIDTH).join("\n"));
 
       const section = parseSectionText(plain) ?? parseModelScope(plain);
       if (section) {
