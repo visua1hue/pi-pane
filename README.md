@@ -2,20 +2,25 @@
 
 <div align="center">
 
-Custom prompt editor pane for [pi](https://pi.dev/), the minimal AI coding agent.
-Framed input with a `pi` prefix, panel background, user message styling with response time, and a double-press quit guard.
+UI extension for [pi](https://pi.dev/), the AI coding agent by [Mario Zechner](https://github.com/badlogic) and [Earendil](https://earendil.com).
 
 </div>
 
 ## Features
 
-- **Custom header** — animated logo with section listing (context, prompts, skills, extensions, themes)
+- **Custom header** — animated logo with aligned, compact startup sections
+- **Version check** — local vs latest pi version on startup
+- **Origin prefixes** — `git:` / `npm:` source tags on extensions and skills
 - **Framed editor** — bordered input with `pi` prefix and panel background
 - **Response time** — per-message timing on user messages
-- **Theme-aware** — colors resolve from the active pi theme
-- **Origin prefixes** — `npm:` / `git:` tags on extensions and skills
 - **Quit guard** — double-press to exit, single press clears input
 - **Stable layout** — consistent width during LLM streaming
+- **Theme-aware** — colors resolve from the active pi theme
+
+## Requirements
+
+- [pi](https://pi.dev/) **≤ v0.67.6**
+- Terminal with [**24-bit truecolor**](#faq) support
 
 ## Install Extension
 
@@ -43,10 +48,22 @@ Add to `~/.pi/agent/settings.json`:
 
 TypeScript is transpiled on the fly — no build step required.
 
-## Requirements
+## FAQ
 
-- [pi agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
+**The intention behind pi-pane?**
+
+Evolved from a prototype exploring pi and [pi-tui](https://github.com/badlogic/pi-mono/tree/main/packages/tui).
+
+**Which terminals are supported?**
+
+pi-pane requires 24-bit truecolor ANSI. To verify, run:
+
+```bash
+printf '\x1b[38;2;255;100;0mTRUECOLOR\x1b[0m\n'
+```
+
+If you see orange text, you're good. macOS Terminal.app, PuTTY, and the Linux TTY console lack truecolor support and will render incorrectly — use iTerm2, Ghostty, WezTerm, Kitty, Alacritty, Windows Terminal, or VS Code's integrated terminal instead.
 
 ## License
 
-MIT
+[MIT](LICENSE)

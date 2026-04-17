@@ -33,6 +33,21 @@ body:
       required: true
 
   - type: dropdown
+    id: truecolor
+    attributes:
+      label: Does your terminal support 24-bit truecolor?
+      description: >
+        pi-pane requires 24-bit truecolor ANSI. Terminal.app, PuTTY, and the Linux TTY console
+        do not support it and will render incorrectly. To check, run:
+        `printf '\x1b[38;2;255;100;0mTRUECOLOR\x1b[0m\n'` — if you see orange text, you're good.
+      options:
+        - "Yes"
+        - "No"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: dropdown
     id: thinking
     attributes:
       label: Thinking/reasoning visibility
