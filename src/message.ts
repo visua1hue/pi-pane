@@ -6,7 +6,9 @@ type UserMsgCtor = typeof UserMessageComponent & { [PATCHED]?: boolean };
 // ── Constants ──────────────────────────────────────────────────────
 
 const PATCHED = Symbol.for("pi-pane:userMsgPatched");
-const OSC133_B = "\x1b]133;B\x07";
+// Match OSC133 B (zone end) or C (zone final). v0.67 moved these from line
+// tail to line head — we strip from wherever they sit and re-emit at the end.
+const OSC133_RE = /\x1b\]133;[BC]\x07/g;
 const MSG_PADDING_X = 3;
 const TIME_COL = 9;
 
@@ -93,23 +95,23 @@ export function patchUserMessage(
           " ".repeat(timeRight);
         const emptyTimeCol = p.panelBg + " ".repeat(TIME_COL);
 
-        const firstContent = 2;
+        const firstContent = 1;
 
-        for (let i = 1; i < lines.length; i++) {
+        for (let i = 0; i < lines.length; i++) {
           let line = lines[i]!;
 
-          let oscSuffix = "";
-          const oscPos = line.indexOf(OSC133_B);
-          if (oscPos >= 0) {
-            oscSuffix = line.slice(oscPos);
-            line = line.slice(0, oscPos);
-          }
+          // Extract any OSC133 B/C markers (shell zone end/final). v0.67 placed
+          // these at the head of the last line; older versions at the tail.
+          // Strip them from the content line; re-emit after the time column.
+          const oscMatches = line.match(OSC133_RE);
+          const oscSuffix = oscMatches ? oscMatches.join("") : "";
+          if (oscSuffix) line = line.replace(OSC133_RE, "");
 
           const col = i === firstContent && hasTime ? timeContent : emptyTimeCol;
           lines[i] = line + col + RESET + oscSuffix;
         }
 
-        return lines;
+        return idx === 0 ? ["", ...lines] : lines;
       };
     },
   );
