@@ -1,5 +1,7 @@
-import type { Theme } from "@mariozechner/pi-coding-agent";
+import type { Theme, UserMessageComponent } from "@mariozechner/pi-coding-agent";
 import { RESET, resolvePalette, setThemeBg } from "./visual.js";
+
+type UserMsgCtor = typeof UserMessageComponent & { [PATCHED]?: boolean };
 
 // ── Constants ──────────────────────────────────────────────────────
 
@@ -38,8 +40,17 @@ export function patchUserMessage(
   setThemeBg(theme, "userMessageBg", lastBg);
 
   import("@mariozechner/pi-coding-agent").then(
-    ({ UserMessageComponent }: any) => {
+    ({ UserMessageComponent }: { UserMessageComponent: UserMsgCtor }) => {
       if (UserMessageComponent[PATCHED]) return;
+
+      if (
+        typeof UserMessageComponent.prototype.addChild !== "function" ||
+        typeof UserMessageComponent.prototype.render !== "function"
+      ) {
+        console.warn("[pi-pane] UserMessageComponent shape changed — skipping patch");
+        return;
+      }
+
       UserMessageComponent[PATCHED] = true;
 
       const origAddChild = UserMessageComponent.prototype.addChild;
@@ -75,6 +86,7 @@ export function patchUserMessage(
         const timeRight = 2;
         const timeLabel = timeStr.length > 0 ? p.time(timeStr) : "";
         const timeContent =
+          p.panelBg +
           timeLabel +
           p.panelBg +
           " ".repeat(Math.max(0, TIME_COL - timeStr.length - timeRight)) +

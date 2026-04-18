@@ -49,6 +49,14 @@ function tryFg(theme: Theme, key: ThemeColor, text: string): string | undefined 
   }
 }
 
+function safeThemeColor(theme: Theme, keys: ThemeColor[], text: string): string {
+  for (const k of keys) {
+    const res = tryFg(theme, k, text);
+    if (res !== undefined) return res;
+  }
+  return fgWrap(FALLBACK_FG, text);
+}
+
 /** Convert a 48;2 or 48;5 bg ANSI code to its fg equivalent (38;…). */
 function bgToFgAnsi(bg: string): string {
   if (bg.startsWith("\x1b[48;2;") || bg.startsWith("\x1b[48;5;")) {
@@ -70,10 +78,10 @@ export function resolvePalette(theme: Theme): PanePalette {
   return {
     panelBg,
     panelEdge: bgToFgAnsi(panelBg),
-    frame: (t) => tryFg(theme, "borderMuted", t) ?? tryFg(theme, "border", t) ?? fgWrap(FALLBACK_FG, t),
-    prefix: (t) => tryFg(theme, "borderMuted", t) ?? tryFg(theme, "border", t) ?? fgWrap(FALLBACK_FG, t),
-    time: (t) => tryFg(theme, "muted", t) ?? tryFg(theme, "accent", t) ?? fgWrap(FALLBACK_FG, t),
-    hint: (t) => tryFg(theme, "dim", t) ?? tryFg(theme, "muted", t) ?? fgWrap(FALLBACK_FG, t),
+    frame: (t) => safeThemeColor(theme, ["borderMuted", "border"], t),
+    prefix: (t) => safeThemeColor(theme, ["borderMuted", "border"], t),
+    time: (t) => safeThemeColor(theme, ["muted", "accent"], t),
+    hint: (t) => safeThemeColor(theme, ["dim", "muted"], t),
   };
 }
 

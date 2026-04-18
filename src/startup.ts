@@ -420,45 +420,43 @@ function cleanName(name: string): string {
   return name.replace(/\.(ts|js|json|md|git)$/i, "");
 }
 
-function extractName(path: string, section: string): string {
-  const trimmed = path.trim();
-  const { prefix, clean } = detectOrigin(trimmed);
+type Extractor = (clean: string, prefix: string) => string;
 
-  if (section === "Prompts") {
-    // Extract prompt name from path (e.g. "/write-plan-implement" → "/write-plan-implement")
+const defaultExtract: Extractor = (clean, prefix) =>
+  prefix + cleanName(clean.split("/").pop() ?? clean);
+
+const sectionExtractors: Record<SectionKey, Extractor> = {
+  Models: defaultExtract,
+  Themes: defaultExtract,
+  Prompts: (clean) => {
     const base = clean.split("/").pop() ?? clean;
     return cleanName(base) || clean;
-  }
-
-  if (section === "Skills" && clean.includes("/")) {
+  },
+  Context: (clean) => clean.split("/").pop() ?? clean,
+  Skills: (clean, prefix) => {
+    if (!clean.includes("/")) return defaultExtract(clean, prefix);
     const parts = clean.split("/");
     const file = parts.pop() ?? "";
     if (/^SKILL\.(md|ts|js)$/i.test(file)) {
       return prefix + cleanName(parts.pop() ?? file);
     }
     return prefix + cleanName(file);
-  }
-
-  if (section === "Context") {
-    return clean.split("/").pop() ?? clean;
-  }
-
-  if (section === "Extensions") {
+  },
+  Extensions: (clean, prefix) => {
     const stripped = clean.replace(/^https?:\/\/[^/]+\//, "");
     const parts = stripped.split("/").filter(p => {
       const lower = p.toLowerCase();
       return p && !/^(index\.(ts|js)|src|dist|out|build|lib|bin)$/.test(lower);
     });
-
-    if (parts.length > 0) {
-      return prefix + cleanName(parts.pop()!);
-    }
-
+    if (parts.length > 0) return prefix + cleanName(parts.pop()!);
     return prefix + cleanName(clean);
-  }
+  },
+};
 
-  const base = clean.split("/").pop() ?? clean;
-  return prefix + cleanName(base);
+function extractName(path: string, section: SectionKey): string {
+  const trimmed = path.trim();
+  const { prefix, clean } = detectOrigin(trimmed);
+  return sectionExtractors[section](clean, prefix);
 }
 
 // ── Chat container discovery ────────────────────────────────────────────────
