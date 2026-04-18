@@ -24,7 +24,7 @@ UI extension for [pi](https://pi.dev/), the AI coding agent by [Mario Zechner](h
 
 ## Requirements
 
-- [pi](https://pi.dev/) **≤ v0.67.6**
+- [pi](https://pi.dev/) **≤ v0.67.68**
 - Terminal with [**24-bit truecolor**](#faq) support
 
 ## Install Extension

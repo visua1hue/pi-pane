@@ -1,6 +1,6 @@
 {
   "name": "@visua1hue/pi-pane",
-  "version": "0.4.3",
+  "version": "0.4.6",
   "description": "Custom editor pane for pi — framed input, dark panel bg, response time, and quit guard.",
   "type": "module",
   "license": "MIT",
